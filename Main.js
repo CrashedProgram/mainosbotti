@@ -1,21 +1,7 @@
 require('dotenv/config');
 const {
-    EmbedBuilder,
-    ActionRowBuilder,
     Client,
     GatewayIntentBits,
-    InteractionType,
-    ModalBuilder,
-    Routes,
-    SelectMenuBuilder,
-    TextInputBuilder,
-    TextInputStyle,
-    ButtonBuilder,
-    ButtonStyle,
-    StringSelectMenuBuilder,
-    StringSelectMenuOptionBuilder,
-    IntentsBitField,
-    ContextMenuCommandBuilder,
     ChannelType
 } = require('discord.js');
 
@@ -25,7 +11,7 @@ const { createAudioResource, StreamType, joinVoiceChannel, createAudioPlayer, Au
 
 const fs = require('fs');
 
-const client = new Client({
+const BotClient = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
@@ -34,76 +20,62 @@ const client = new Client({
     ],
 });
 
-async function Play(Channel) {
-    const Connection = joinVoiceChannel({
-        channelId: Channel.id,
-        guildId: Channel.guild.id,
-        adapterCreator: Channel.guild.voiceAdapterCreator,
-    });
+async function PlayInMostPopulatedChannel() {
+    const Guilds = BotClient.guilds.cache;
 
-    const Player = createAudioPlayer();
-
-    const SoundFiles = fs.readdirSync('./Sounds');
-    const RandomFile = SoundFiles[Math.floor(Math.random() * SoundFiles.length)];
-    const Resource = createAudioResource(createReadStream(join(__dirname, './Sounds', RandomFile), {
-        inputType: StreamType.OggOpus,
-    }));
-
-    Player.play(Resource);
-
-    Connection.subscribe(Player);
-
-    Player.on(AudioPlayerStatus.Idle, () => {
-        Connection.destroy();
-    });
-}
-
-
-function PlayAD() {
-
-    const Guilds = client.guilds.cache;
-
-    Guilds.forEach(async (Guild) => {
-
+    for (const Guild of Guilds.values()) {
         const VoiceChannels = Guild.channels.cache.filter(channel => channel.type === ChannelType.GuildVoice);
 
         let MaxMembers = 0;
         let MaxMembersChannel;
 
-        VoiceChannels.forEach((Channel) => {
-            if (VoiceChannels.size === 0) {
-                return;
-            }
-
+        for (const Channel of VoiceChannels.values()) {
             const MembersCount = Channel.members.size;
 
             if (MembersCount > MaxMembers) {
                 MaxMembers = MembersCount;
                 MaxMembersChannel = Channel;
             }
-        });
+        }
 
         if (MaxMembersChannel) {
             console.log(`Guild: ${Guild.name}\nVoice Channel with Most Members: ${MaxMembersChannel.name}\nMember Count: ${MaxMembers}`);
-            Play(MaxMembersChannel);
-        } else {
-            return;
+
+            const connection = joinVoiceChannel({
+                channelId: MaxMembersChannel.id,
+                guildId: MaxMembersChannel.guild.id,
+                adapterCreator: MaxMembersChannel.guild.voiceAdapterCreator,
+            });
+
+            const Player = createAudioPlayer();
+            const SoundFiles = fs.readdirSync('./Sounds');
+            const RandomFile = SoundFiles[Math.floor(Math.random() * SoundFiles.length)];
+            const Resource = createAudioResource(createReadStream(join(__dirname, './Sounds', RandomFile), {
+                inputType: StreamType.OggOpus,
+            }));
+
+            Player.play(Resource);
+            connection.subscribe(Player);
+
+            Player.on(AudioPlayerStatus.Idle, () => {
+                connection.destroy();
+            });
         }
-    });
+    }
 }
 
-client.on('ready', async () => {
+BotClient.on('ready', async () => {
     console.log("ready");
     while (true) {
-        PlayAD();
+        await PlayInMostPopulatedChannel();
         /* CONFIG */
-        let MinTime = 20;
-        let MaxTime = 60;
-        const randomTime = Math.floor(Math.random() * (MaxTime - MinTime + 1) + MinTime);
-        console.log(`Waiting for ${randomTime} minutes`)
+        let minTime = 20;
+        let maxTime = 60;
+        const randomTime = Math.floor(Math.random() * (maxTime - minTime + 1) + minTime);
+        console.log(`Waiting for ${randomTime} minutes`);
         await new Promise(resolve => setTimeout(resolve, randomTime * 60 * 1000));
     }
 });
 
-client.login(process.env.TOKEN);
-console.log("coole 🥶👍")
+BotClient.login(process.env.TOKEN);
+console.log("coole 🥶👍");
