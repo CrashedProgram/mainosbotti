@@ -1,3 +1,10 @@
+const fs = require('fs');
+
+const SoundFiles = fs.readdirSync('./Sounds');
+if (SoundFiles.includes('esimerkki.ogg')) {
+    fs.unlinkSync('./Sounds/esimerkki.ogg');
+}
+
 require('dotenv/config');
 const {
     Client,
@@ -8,8 +15,6 @@ const {
 const { createReadStream } = require('node:fs');
 const { join } = require('node:path');
 const { createAudioResource, StreamType, joinVoiceChannel, createAudioPlayer, AudioPlayerStatus } = require('@discordjs/voice');
-
-const fs = require('fs');
 
 const BotClient = new Client({
     intents: [
@@ -48,7 +53,6 @@ async function PlayInMostPopulatedChannel() {
             });
 
             const Player = createAudioPlayer();
-            const SoundFiles = fs.readdirSync('./Sounds');
             const RandomFile = SoundFiles[Math.floor(Math.random() * SoundFiles.length)];
             const Resource = createAudioResource(createReadStream(join(__dirname, './Sounds', RandomFile), {
                 inputType: StreamType.OggOpus,
